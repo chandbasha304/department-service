@@ -1,0 +1,21 @@
+services:
+
+  ems-app:
+    build: .
+
+    container_name: ems-backend
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      APPLICATION_NAME: ${APPLICATION_NAME}
+      DATABASE_URL: ${DATABASE_URL}
+      USER_NAME: ${USER_NAME}
+      PASSWORD: ${PASSWORD}
+      DRIVER_CLASS: ${DRIVER_CLASS}
+      AUTO_DDL: ${AUTO_DDL}
+      SHOW_SQL: ${SHOW_SQL}
+      DB_PLATFORM: ${DB_PLATFORM}
+      SECRET: ${SECRET}
+      EXPIRATION: ${EXPIRATION}
