@@ -8,14 +8,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$BRANCH_NAME'
+      - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$SHORT_SHA'
       - '-t'
       - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest'
       - '.'
 
   # 3. Push Docker Images to Google Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$BRANCH_NAME']
+    args: ['push', 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$SHORT_SHA']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest']
 
@@ -30,7 +30,7 @@ steps:
           --command="docker network create ems-network || true && docker pull us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest && docker stop department-backend || true && docker rm department-backend || true && docker run -d --name department-backend --network ems-network -p 8081:8081 us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest"
 
 images:
-  - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$BRANCH_NAME'
+  - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$SHORT_SHA'
   - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest'
 
 options:
