@@ -128,10 +128,11 @@ public class EmployeeRepository {
         builder.bind("ids").toInt64Array(idList.stream().mapToLong(Long::longValue).toArray());
         try (ResultSet rs = dbClient.singleUse().executeQuery(builder.build())) {
             while (rs.next()) {
-                Employee emp = mapRow(rs);
+                Employee emp = mapRowWithoutDepartment(rs);
                 log.info("[REPO] EmployeeRepository.findAllById found employee: id={}, email={}", emp.getId(), emp.getEmail());
                 list.add(emp);
             }
+            enrichEmployeesWithDepartments(list);
         } catch (Exception e) {
             log.error("[REPO] EmployeeRepository.findAllById failed: {}", e.getMessage(), e);
             throw e;
@@ -221,8 +222,9 @@ public class EmployeeRepository {
                     .build();
             try (ResultSet rs = dbClient.singleUse().executeQuery(stmt)) {
                 while (rs.next()) {
-                    content.add(mapRow(rs));
+                    content.add(mapRowWithoutDepartment(rs));
                 }
+                enrichEmployeesWithDepartments(content);
             } catch (Exception e) {
                 log.error("[REPO] EmployeeRepository.findAll(Pageable) query execution failed: {}", e.getMessage(), e);
                 throw e;
@@ -337,8 +339,9 @@ public class EmployeeRepository {
              .build();
             try (ResultSet rs = dbClient.singleUse().executeQuery(selectStmt)) {
                 while (rs.next()) {
-                    content.add(mapRow(rs));
+                    content.add(mapRowWithoutDepartment(rs));
                 }
+                enrichEmployeesWithDepartments(content);
             } catch (Exception e) {
                 log.error("[REPO] EmployeeRepository.searchEmployees select query failed: {}", e.getMessage(), e);
                 throw e;
@@ -376,8 +379,9 @@ public class EmployeeRepository {
              .build();
             try (ResultSet rs = dbClient.singleUse().executeQuery(selectStmt)) {
                 while (rs.next()) {
-                    content.add(mapRow(rs));
+                    content.add(mapRowWithoutDepartment(rs));
                 }
+                enrichEmployeesWithDepartments(content);
             } catch (Exception e) {
                 log.error("[REPO] EmployeeRepository.findByFirstNameContainingIgnoreCase select query failed: {}", e.getMessage(), e);
                 throw e;
@@ -440,7 +444,7 @@ public class EmployeeRepository {
         return list;
     }
 
-    private Employee mapRow(ResultSet rs) {
+    private Employee mapRowWithoutDepartment(ResultSet rs) {
         Employee emp = new Employee();
         emp.setId(rs.getLong("id"));
         emp.setEmployeeCode(rs.getString("employee_code"));
@@ -457,8 +461,54 @@ public class EmployeeRepository {
         emp.setStatus(rs.getString("status"));
         
         if (!rs.isNull("department_id")) {
-            long deptId = rs.getLong("department_id");
-            Optional<Department> dept = departmentRepository.findById(deptId);
+            Department dept = new Department();
+            dept.setId(rs.getLong("department_id"));
+            emp.setDepartment(dept);
+        }
+        return emp;
+    }
+
+    private void enrichEmployeesWithDepartments(List<Employee> employees) {
+        if (employees == null || employees.isEmpty()) return;
+        List<Long> deptIds = employees.stream()
+                .map(Employee::getDepartment)
+                .filter(java.util.Objects::nonNull)
+                .map(Department::getId)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+        if (deptIds.isEmpty()) return;
+
+        Statement stmt = Statement.newBuilder("SELECT * FROM departments WHERE id IN UNNEST(@ids)")
+                .bind("ids").toInt64Array(deptIds.stream().mapToLong(Long::longValue).toArray())
+                .build();
+        
+        java.util.Map<Long, Department> deptMap = new java.util.HashMap<>();
+        try (ResultSet rs = dbClient.singleUse().executeQuery(stmt)) {
+            while (rs.next()) {
+                Department d = new Department();
+                d.setId(rs.getLong("id"));
+                d.setName(rs.getString("name"));
+                d.setDescription(rs.isNull("description") ? null : rs.getString("description"));
+                deptMap.put(d.getId(), d);
+            }
+        } catch (Exception e) {
+            log.error("[REPO] Failed to batch fetch departments: {}", e.getMessage(), e);
+        }
+
+        for (Employee emp : employees) {
+            if (emp.getDepartment() != null) {
+                Department fullDept = deptMap.get(emp.getDepartment().getId());
+                if (fullDept != null) {
+                    emp.setDepartment(fullDept);
+                }
+            }
+        }
+    }
+
+    private Employee mapRow(ResultSet rs) {
+        Employee emp = mapRowWithoutDepartment(rs);
+        if (emp.getDepartment() != null) {
+            Optional<Department> dept = departmentRepository.findById(emp.getDepartment().getId());
             dept.ifPresent(emp::setDepartment);
         }
         return emp;

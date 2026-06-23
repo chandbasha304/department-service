@@ -3,6 +3,8 @@ package com.example.emsdept.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.springframework.data.domain.Persistable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -13,11 +15,25 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Employee {
+public class Employee implements Persistable<Long> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostPersist
+    @PostLoad
+    public void markNotNew() {
+        this.isNew = false;
+    }
 
     private String employeeCode;
 
@@ -37,7 +53,7 @@ public class Employee {
 
     private String status;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
 }
