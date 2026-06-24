@@ -1,6 +1,7 @@
 steps:
   # 1. Build and package the Spring Boot JAR
-  - name: 'gcr.io/cloud-builders/mvn'
+  - name: 'maven:3.9.6-eclipse-temurin-21'
+    entrypoint: 'mvn'
     args: ['clean', 'package', '-DskipTests']
 
   # 2. Build Docker Image
@@ -27,7 +28,7 @@ steps:
       - |
         gcloud compute ssh bashasoft304@ems-backend-vm \
           --zone=us-central1-a \
-          --command="docker network create ems-network || true && docker pull us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest && docker stop department-backend || true && docker rm department-backend || true && docker run -d --name department-backend --network ems-network -p 8081:8081 us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest"
+          --command="docker network create ems-network || true && docker pull us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest && docker stop department-backend || true && docker rm department-backend || true && docker run -d --name department-backend --network ems-network -p 8081:8080 us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:latest"
 
 images:
   - 'us-central1-docker.pkg.dev/prefab-lamp-498812-u8/ems-repo/department-backend:$SHORT_SHA'
